@@ -4,6 +4,21 @@
 from collections import namedtuple
 Item = namedtuple("Item", ['index', 'value', 'weight'])
 
+def computeColumn(prevCol, capacity, weight, value):
+#	print("computeColumn cap = " + str(capacity) + ", curItem is w" + str(weight) + ", v" + str(value))
+#	print("prevcol is " + str(prevCol))
+	curCol = [0]*(capacity+1)
+	for k in range(0, capacity+1):
+		# compare prevCol[k] to prevCol[k-weight]+value
+		if k-weight >= 0 and (prevCol[k-weight] + value) > prevCol[k]:
+			# Select item
+			curCol[k] = prevCol[k-weight] + value
+		else:
+			curCol[k] = prevCol[k]
+
+#	print("returning " + str(curCol))	
+	return curCol
+
 def solve_it(input_data):
     # Modify this code to run your optimization algorithm
 
@@ -27,11 +42,22 @@ def solve_it(input_data):
     weight = 0
     taken = [0]*len(items)
 
-    for item in items:
-        if weight + item.weight <= capacity:
-            taken[item.index] = 1
-            value += item.value
-            weight += item.weight
+    table = [[0]*(capacity+1) for i in range(0,item_count+1)]
+	# Initialise column 0
+    for column in range(1, item_count+1):
+        table[column] = computeColumn(table[column-1], capacity, items[column-1].weight, items[column-1].value)
+	
+	# And now trace back from table[item_count][capacity] to fill taken[]
+    value = table[item_count][capacity]
+    weight = capacity
+    
+    # DEBUG
+#    print(str(table))
+    
+    for i in range(item_count,0,-1):
+        if table[i-1][weight] != table[i][weight]:
+            taken[i-1] = 1
+            weight -= items[i-1].weight
     
     # prepare the solution in the specified output format
     output_data = str(value) + ' ' + str(0) + '\n'
