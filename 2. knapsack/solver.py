@@ -8,10 +8,19 @@ Item = namedtuple("Item", ['index', 'value', 'weight'])
 biggestTaken = []
 
 def estimate(item, items, capacity):
-	# Dumb estimate ignoring constraint
+	# Estimate by ordering items by value/weight and taking as many as possible
 	est = 0
-	for i in range(item.index, len(items)):
-		est += items[i].value
+	remainingCap = capacity
+	itemsToSort = items[item.index:]
+	sortedItems = sorted(itemsToSort, key=lambda x: x.value / float(x.weight), reverse=True)
+	
+	for i in range(0, len(sortedItems)):		 
+		if sortedItems[i].weight <= remainingCap:
+			est += sortedItems[i].value
+			remainingCap -= sortedItems[i].weight
+		else:
+			est += remainingCap * sortedItems[i].value / float(sortedItems[i].weight)
+			remainingCap = 0
 	return est
 	
 def findBestChild(item, items, capacity, value, taken, biggestValue):
