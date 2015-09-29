@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import copy
+import copy,sys
 from collections import namedtuple
 Item = namedtuple("Item", ['index', 'value', 'weight'])
 
 biggestTaken = []
+sys.setrecursionlimit(1500)
 
 def estimate(item, items, capacity):
 	# Estimate by ordering items by value/weight and taking as many as possible
@@ -25,20 +26,23 @@ def estimate(item, items, capacity):
 	
 def findBestChild(item, items, capacity, value, taken, biggestValue):
 	global biggestTaken
+
+	# Debug
+#	print("Looking at item index " + str(item.index) + ", cap " + str(capacity) +
+#		", val " + str(value) + ", biggest " + str(biggestValue))
 	
 	# Prune immediately if capacity < 0
 	if capacity < 0:
+#		print("no capacity, pruning")
 		return biggestValue
 	
 	# Find an estimate
 	est = value + estimate(item, items, capacity)
-	
-	# Debug
-#	print("Looking at item index " + str(item.index) + ", cap " + str(capacity) +
-#		", val " + str(value) + ", biggest " + str(biggestValue) + ", est " + str(est))
-			
+#	print("got an estimate of "+str(est))
+				
 	# Is the estimate smaller than the biggest already-found value?
 	if biggestValue >= est:
+#		print("biggest value is bigger, prune")
 		return biggestValue
 	
 	# Is item a leaf?
@@ -68,13 +72,15 @@ def findBestChild(item, items, capacity, value, taken, biggestValue):
 		return biggestValue
 	else:
 		# Compute best option if item is taken
-#		print("descending the tree from item "+str(item.index))
-		taken[item.index]=1
-		testValue = findBestChild(items[item.index + 1], items, capacity - item.weight, value + item.value, taken, biggestValue)
-		if testValue > biggestValue:
-			biggestValue = testValue
-		taken[item.index]=0
-#		print("returned "+str(testValue)+" descending right side of tree from item "+str(item.index))
+		if capacity - item.weight >= 0:
+#			print("descending the tree from item "+str(item.index))
+			taken[item.index]=1
+			testValue = findBestChild(items[item.index + 1], items, capacity - item.weight, value + item.value, taken, biggestValue)
+			if testValue > biggestValue:
+				biggestValue = testValue
+			taken[item.index]=0
+#			print("returned "+str(testValue))
+#		print(" descending right side of tree from item "+str(item.index))
 		testValue = findBestChild(items[item.index + 1], items, capacity, value, taken, biggestValue)
 #		print("returned "+str(testValue))
 		if testValue > biggestValue:
