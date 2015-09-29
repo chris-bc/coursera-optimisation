@@ -1,8 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import copy
 from collections import namedtuple
 Item = namedtuple("Item", ['index', 'value', 'weight'])
+
+biggestTaken = []
 
 def estimate(item, items, capacity):
 	# Dumb estimate ignoring constraint
@@ -12,53 +15,67 @@ def estimate(item, items, capacity):
 	return est
 	
 def findBestChild(item, items, capacity, value, taken, biggestValue):
+	global biggestTaken
+	
+	# Prune immediately if capacity < 0
+	if capacity < 0:
+		return biggestValue
+	
 	# Find an estimate
 	est = value + estimate(item, items, capacity)
 	
 	# Debug
-	print("Looking at item index " + str(item.index) + ", cap " + str(capacity) +
-		", val " + str(value) + ", biggest " + str(biggestValue) + ", est " + str(est))
+#	print("Looking at item index " + str(item.index) + ", cap " + str(capacity) +
+#		", val " + str(value) + ", biggest " + str(biggestValue) + ", est " + str(est))
 			
 	# Is the estimate smaller than the biggest already-found value?
 	if biggestValue >= est:
-		taken[item.index] = 0
 		return biggestValue
 	
 	# Is item a leaf?
 	if item.index >= len(items) - 1:
+#		print("in leaf index "+str(item.index)+", taken is "+str(taken)+", biggest is "+str(biggestTaken))
 		# Is there space for itemIndex?
 		if capacity >= item.weight:
 			# Add it if it's good
 			if value + item.value > biggestValue:
 				taken[item.index] = 1
-				return value
-			
-		else:
-			# If no space for item, or space but no point adding, don't change anything
+				biggestTaken = copy.copy(taken)
+				return value + item.value
+			else:	
+				# If space for item but no point adding, don't change anything
+				taken[item.index] = 0
+				biggestTaken = copy.copy(taken)
+#				print("in leaf taken "+str(taken) + ", BT " + str(biggestTaken))
+				if value > biggestValue:
+					return value
+				else:
+					return biggestValue
+		# No space - Are we a winner anyway?
+		if value > biggestValue:
 			taken[item.index] = 0
-			if value > biggestValue:
-				return value
-			else:
-				return biggestValue
+			biggestTaken = copy.copy(taken)
+			return value
+		return biggestValue
 	else:
 		# Compute best option if item is taken
-		takenTaken = taken
-		notTakenTaken = taken
-		takenValue = findBestChild(items[item.index + 1], items, capacity - item.weight, value + item.value, takenTaken, biggestValue)
-		notTakenValue = findBestChild(items[item.index + 1], items, capacity, value, notTakenTaken, biggestValue)
-		
-		if takenValue  > notTakenValue and takenValue > biggestValue:
-			# TODO: Fix the intermediate levels of taken ... takenTaken etc.
-			taken[item.index] = 1
-			biggestValue = takenValue
-		if notTakenValue > takenValue and notTakenValue > biggestValue:
-			biggestValue = notTakenValue
-			taken[item.index] = 0
+#		print("descending the tree from item "+str(item.index))
+		taken[item.index]=1
+		testValue = findBestChild(items[item.index + 1], items, capacity - item.weight, value + item.value, taken, biggestValue)
+		if testValue > biggestValue:
+			biggestValue = testValue
+		taken[item.index]=0
+#		print("returned "+str(testValue)+" descending right side of tree from item "+str(item.index))
+		testValue = findBestChild(items[item.index + 1], items, capacity, value, taken, biggestValue)
+#		print("returned "+str(testValue))
+		if testValue > biggestValue:
+			biggestValue = testValue
+		taken = biggestTaken
 			
 		return biggestValue
 
 def solve_it(input_data):
-    # Modify this code to run your optimization algorithm
+    global biggestTaken
 
     # parse the input
     lines = input_data.split('\n')
@@ -77,9 +94,10 @@ def solve_it(input_data):
     value = 0
     weight = 0
     taken = [0]*len(items)
+    biggestTaken = [0]*len(items)
     
     value = findBestChild(items[0], items, capacity, value, taken, value)
-    
+    taken = biggestTaken
     
     # prepare the solution in the specified output format
     output_data = str(value) + ' ' + str(0) + '\n'
