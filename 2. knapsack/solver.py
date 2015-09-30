@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import copy,sys,logging
+import copy,sys,logging,resource,time
 from collections import namedtuple
 Item = namedtuple("Item", ['index', 'value', 'weight'])
 
@@ -9,6 +9,8 @@ biggestTaken = []
 sys.setrecursionlimit(20000)
 nodecount = 0
 logging.basicConfig(filename='debug.log',level=logging.DEBUG)
+end = time.time()
+timeout = 18000 # 5-hour timeout
 
 def estimate(item, items, capacity):
 	# Estimate by ordering items by value/weight and taking as many as possible
@@ -32,6 +34,10 @@ def estimate(item, items, capacity):
 def findBestChild(item, items, capacity, value, taken, biggestValue):
 	global biggestTaken
 	global nodecount
+	global end
+	
+	if time.time() >= end:
+		return biggestValue
 	
 	nodecount+=1
 
@@ -134,6 +140,10 @@ def computeColumn(prevCol, capacity, weight, value):
 
 def solve_it(input_data):
     global biggestTaken
+    global end
+    global timeout
+	
+    end = time.time() + timeout
 
     # parse the input
     lines = input_data.split('\n')
@@ -154,7 +164,7 @@ def solve_it(input_data):
     taken = [0]*len(items)
     
     # Use depth-first for K>1M
-    if capacity > 1000000:
+    if capacity >= 1000000:
         biggestTaken = [0]*len(items)
     
         value = findBestChild(items[0], items, capacity, value, taken, value)
