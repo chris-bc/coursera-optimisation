@@ -17,13 +17,16 @@ def estimate(item, items, capacity):
 	itemsToSort = items[item.index:]
 	sortedItems = sorted(itemsToSort, key=lambda x: x.value / float(x.weight), reverse=True)
 	
-	for i in range(0, len(sortedItems)):		 
-		if sortedItems[i].weight <= remainingCap:
-			est += sortedItems[i].value
-			remainingCap -= sortedItems[i].weight
-		else:
-			est += remainingCap * sortedItems[i].value / float(sortedItems[i].weight)
-			remainingCap = 0
+	for i in range(0, len(sortedItems)):	
+		# Improve upon the estimate by excluding anything outright if its weight
+		#  is greater than the total remaining capacity (capacity param)
+		if sortedItems[i].weight <= capacity:
+			if sortedItems[i].weight <= remainingCap:
+				est += sortedItems[i].value
+				remainingCap -= sortedItems[i].weight
+			else:
+				est += remainingCap * sortedItems[i].value / float(sortedItems[i].weight)
+				remainingCap = 0
 	return est
 	
 def findBestChild(item, items, capacity, value, taken, biggestValue):
@@ -77,19 +80,39 @@ def findBestChild(item, items, capacity, value, taken, biggestValue):
 		return biggestValue
 	else:
 		# Compute best option if item is taken
-		if capacity - item.weight >= 0:
-#			logging.debug("descending the tree from item "+str(item.index))
-			taken[item.index]=1
+		
+		# Can we improve upon this?
+		# Estimate x(i+1), k and compare to value + estimate x(i+1),k-weight
+		# Descend to largest estimate first
+		# Then compare smaller estimate against (possibly) updated biggestValue
+		# TODO Call estimate twice not thrice
+		takenEst = value + item.value + estimate(items[item.index+1], items, capacity-item.weight)
+		notTakenEst = value + estimate(items[item.index+1], items, capacity)
+		
+		# If able to take and should take
+		if capacity - item.weight >= 0 and takenEst > biggestValue:
+			if takenEst > notTakenEst:
+				# Test take first
+				taken[item.index]=1
+				testValue = findBestChild(items[item.index + 1], items, capacity - item.weight, value + item.value, taken, biggestValue)
+				if testValue > biggestValue:
+					biggestValue = testValue
+		# Scenario 1: biggestValue = max(takenChoice, biggestValue)
+		# Scenario 2: biggestValue = biggestValue. Calc max(notTakenChoice, biggestValue)
+		if notTakenEst > biggestValue:
+			taken[item.index] = 0
+			testValue = findBestChild(items[item.index + 1], items, capacity, value, taken, biggestValue)
+			if testValue > biggestValue:
+				biggestValue = testValue
+		
+		# If notTakenEst > takenEst and able to test taken est we do so now
+		if notTakenEst > takenEst and takenEst > biggestValue and capacity - item.weight >= 0:
+			taken[item.index] = 1
 			testValue = findBestChild(items[item.index + 1], items, capacity - item.weight, value + item.value, taken, biggestValue)
 			if testValue > biggestValue:
 				biggestValue = testValue
-			taken[item.index]=0
-#			logging.debug("returned "+str(testValue))
-#		logging.debug(" descending right side of tree from item "+str(item.index))
-		testValue = findBestChild(items[item.index + 1], items, capacity, value, taken, biggestValue)
-#		logging.debug("returned "+str(testValue))
-		if testValue > biggestValue:
-			biggestValue = testValue
+		
+		# Phew!!
 		taken = biggestTaken
 #		logging.debug("returning " + str(biggestValue) + " from item " + str(item.index) + " nodeCount " + str(nodecount))
 		return biggestValue
